@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Найди пары</title>
+  <style>
+    body {
+      background-color: #000;
+      font-family: sans-serif;
+      color: #0ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: #0ff;
+      text-shadow: 0 0 10px #0ff;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      grid-gap: 10px;
+      margin-bottom: 20px;
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      background-color: #000;
+      border: 2px solid #0ff;
+      color: #0ff;
+      font-size: 20px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-shadow: 0 0 5px #0ff;
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    .cell.empty {
+      color: #000;
+      border-color: #000;
+    }
+    #slots {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .slot {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #0ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-shadow: 0 0 5px #0ff;
+    }
+    #timer {
+      margin-bottom: 10px;
+      color: #0ff;
+      text-shadow: 0 0 5px #0ff;
+    }
+    #restart {
+      padding: 6px 20px;
+      border: 2px solid #0ff;
+      color: #0ff;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Найди пары</h1>
+  <div id="grid"></div>
+  <div id="slots"></div>
+  <div id="timer">⏳ <span id="time">30</span> сек</div>
+  <button id="restart">Рестарт</button>
+
+  <script>
+    const grid = document.getElementById("grid");
+    const slots = document.getElementById("slots");
+    const timerDisplay = document.getElementById("time");
+    const restartBtn = document.getElementById("restart");
+
+    let numbers = [];
+    let first = null;
+    let timeLeft = 30;
+    let timer;
+    let found = 0;
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function generateNumbers() {
+      let nums = Array.from({length: 25}, (_, i) => i + 1);
+      shuffle(nums);
+      let pairs = shuffle(nums.slice(0, 3).flatMap(n => [n, n]));
+      let rest = nums.slice(3, 25 - pairs.length);
+      return shuffle([...pairs, ...rest]);
+    }
+
+    function startGame() {
+      numbers = generateNumbers();
+      grid.innerHTML = "";
+      slots.innerHTML = "";
+      timeLeft = 30;
+      timerDisplay.textContent = timeLeft;
+      clearInterval(timer);
+      found = 0;
+      first = null;
+
+      for (let i = 0; i < 25; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.textContent = numbers[i];
+        cell.dataset.index = i;
+        grid.appendChild(cell);
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slots.appendChild(slot);
+      }
+
+      timer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          alert("✖️ Время вышло!");
+        }
+      }, 1000);
+    }
+
+    grid.addEventListener("click", e => {
+      if (!e.target.classList.contains("cell") || e.target.classList.contains("empty")) return;
+      const index = +e.target.dataset.index;
+      const value = numbers[index];
+
+      if (first === null) {
+        first = { index, value, element: e.target };
+        e.target.style.backgroundColor = "#111";
+      } else if (index !== first.index) {
+        if (value === first.value) {
+          e.target.classList.add("empty");
+          first.element.classList.add("empty");
+          e.target.textContent = "";
+          first.element.textContent = "";
+          slots.children[found].textContent = value;
+          found++;
+          if (found === 3) {
+            clearInterval(timer);
+            alert("✔️ Победа!");
+          }
+        }
+        e.target.style.backgroundColor = "";
+        first.element.style.backgroundColor = "";
+        first = null;
+      }
+    });
+
+    restartBtn.addEventListener("click", startGame);
+    startGame();
+  </script>
+</body>
+</html>
