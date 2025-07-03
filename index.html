@@ -1,11 +1,11 @@
-<!DOCTYPE html><html lang="ru">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🧠 Найди пары</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
-      margin: 0;
       background: black;
       font-family: 'Courier New', monospace;
       color: #00fff0;
@@ -13,79 +13,77 @@
       align-items: center;
       justify-content: center;
       height: 100vh;
+      margin: 0;
     }
     .container {
-      border: 4px solid #00fff0;
-      border-radius: 30px;
+      border: 3px solid #00fff0;
+      border-radius: 25px;
       padding: 20px;
-      box-shadow: 0 0 40px #00fff0;
       text-align: center;
-      width: 90%;
-      max-width: 420px;
+      box-shadow: 0 0 40px #00fff0;
+      width: fit-content;
       position: relative;
     }
     h1 {
-      margin-top: 0;
-      font-size: 26px;
+      margin-bottom: 10px;
+      font-size: 28px;
+      color: #00fff0;
       text-shadow: 0 0 10px #00fff0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 6px;
-      margin-bottom: 16px;
+      grid-template-columns: repeat(5, 50px);
+      gap: 5px;
+      margin: 10px auto;
     }
     .cell {
-      width: 40px;
-      height: 40px;
-      background: black;
-      border: 2px solid #00fff0;
-      box-shadow: inset 0 0 10px #00fff0;
+      width: 50px;
+      height: 50px;
+      font-size: 18px;
+      color: #00fff0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      cursor: pointer;
-      color: #00fff0;
-    }
-    .hidden {
+      border: 2px solid #00fff0;
       background: black;
-      color: transparent;
+      box-shadow: inset 0 0 10px #00fff0;
+      cursor: pointer;
     }
-    .slot-row {
+    .cell.hidden {
+      color: black;
+    }
+    .slots {
       display: flex;
       justify-content: center;
       gap: 10px;
       margin: 10px 0;
     }
     .slot {
-      width: 40px;
-      height: 40px;
+      width: 50px;
+      height: 50px;
       border: 2px solid #00fff0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #00fff0;
       box-shadow: inset 0 0 10px #00fff0;
     }
-    .timer, .result {
+    #timer {
       font-size: 18px;
-      margin-top: 10px;
+      margin: 10px 0;
     }
-    .restart {
+    #restart {
       margin-top: 10px;
       padding: 5px 15px;
-      border: 2px solid #00fff0;
       background: black;
       color: #00fff0;
+      border: 2px solid #00fff0;
       cursor: pointer;
-      font-size: 18px;
+      font-size: 16px;
     }
-    .emoji {
-      position: absolute;
-      bottom: 10px;
-      right: 20px;
-      font-size: 32px;
+    #statusEmoji {
+      font-size: 30px;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -93,120 +91,147 @@
   <div class="container">
     <h1>🧠 Найди пары</h1>
     <div class="grid" id="grid"></div>
-    <div class="slot-row">
+    <div class="slots">
       <div class="slot" id="slot1"></div>
       <div class="slot" id="slot2"></div>
       <div class="slot" id="slot3"></div>
     </div>
-    <div class="timer">⏳ <span id="timer">30</span> сек</div>
-    <button class="restart" onclick="location.reload()">Рестарт</button>
-    <div class="emoji" id="result"></div>
-  </div>  <script>
-    const gridEl = document.getElementById("grid");
-    const timerEl = document.getElementById("timer");
-    const resultEl = document.getElementById("result");
-    const slots = [
-      document.getElementById("slot1"),
-      document.getElementById("slot2"),
-      document.getElementById("slot3")
-    ];
+    <div id="timer">⏳ 30 сек</div>
+    <button id="restart" onclick="location.reload()">Рестарт</button>
+    <div id="statusEmoji"></div>
+  </div>
 
-    const gridSize = 36;
-    let values = [];
+  <script>
+    const gridEl = document.getElementById('grid');
+    const timerEl = document.getElementById('timer');
+    const slots = [document.getElementById('slot1'), document.getElementById('slot2'), document.getElementById('slot3')];
+    const statusEmoji = document.getElementById('statusEmoji');
+
+    const size = 5;
+    const total = size * size;
+    let numbers = [];
+    let revealed = Array(total).fill(false);
+    let matched = Array(total).fill(false);
     let selected = [];
-    let foundPairs = 0;
-    let timer = 30;
 
-    // Генерация 3 пар + оставшиеся уникальные
-    const generateValues = () => {
-      const nums = [];
-      const repeated = [];
-      while (repeated.length < 3) {
-        const num = Math.floor(Math.random() * 99) + 1;
-        if (!repeated.includes(num)) repeated.push(num);
-      }
-      const repeats = repeated.flatMap(x => [x, x]);
-      while (repeats.length < 6) repeats.push(null);
-      while (repeats.length < gridSize) {
-        const num = Math.floor(Math.random() * 99) + 1;
-        if (!repeated.includes(num) && !repeats.includes(num)) repeats.push(num);
-      }
-      return repeats.sort(() => Math.random() - 0.5);
-    };
+    let time = 30;
+    let tick;
 
-    const renderGrid = () => {
-      gridEl.innerHTML = "";
-      values.forEach((val, idx) => {
-        const cell = document.createElement("div");
-        cell.className = "cell";
-        cell.dataset.index = idx;
-        if (val !== null) cell.textContent = val;
-        else cell.textContent = "";
-        cell.addEventListener("click", () => handleClick(idx));
+    function generateGrid() {
+      const used = new Set();
+      const pairs = [];
+
+      while (pairs.length < 3) {
+        let n = Math.floor(Math.random() * 20) + 1;
+        if (!used.has(n)) {
+          used.add(n);
+          pairs.push(n, n);
+        }
+      }
+
+      const remaining = [];
+      while (remaining.length < total - 6) {
+        let n = Math.floor(Math.random() * 20) + 1;
+        if (!used.has(n)) {
+          used.add(n);
+          remaining.push(n);
+        }
+      }
+
+      numbers = [...pairs, ...remaining].sort(() => Math.random() - 0.5);
+    }
+
+    function renderGrid() {
+      gridEl.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.index = i;
+        if (!revealed[i] && !matched[i]) {
+          cell.classList.add('hidden');
+          cell.textContent = numbers[i];
+        } else if (matched[i]) {
+          cell.textContent = '';
+        } else {
+          cell.textContent = numbers[i];
+        }
+        cell.onclick = () => handleClick(i);
         gridEl.appendChild(cell);
-      });
-    };
+      }
+    }
 
-    const handleClick = idx => {
-      const value = values[idx];
-      if (value === null || selected.includes(idx)) return;
-      selected.push(idx);
+    function handleClick(index) {
+      if (revealed[index] || matched[index] || selected.length >= 2) return;
+      revealed[index] = true;
+      selected.push(index);
+      renderGrid();
 
       if (selected.length === 2) {
-        const [a, b] = selected;
-        if (values[a] === values[b]) {
-          const matchValue = values[a];
-          values[a] = values[b] = null;
-          const emptySlot = slots.find(slot => !slot.textContent);
-          if (emptySlot) emptySlot.textContent = matchValue;
-          foundPairs++;
-          checkWin();
+        const [i1, i2] = selected;
+        if (numbers[i1] === numbers[i2]) {
+          matched[i1] = matched[i2] = true;
+          setTimeout(() => {
+            addToSlot(numbers[i1]);
+            selected = [];
+            renderGrid();
+            checkWin();
+          }, 500);
+        } else {
+          setTimeout(() => {
+            revealed[i1] = revealed[i2] = false;
+            selected = [];
+            renderGrid();
+          }, 800);
         }
-        selected = [];
+      }
+    }
+
+    function addToSlot(num) {
+      for (let slot of slots) {
+        if (!slot.textContent) {
+          slot.textContent = num;
+          return;
+        }
+      }
+    }
+
+    function checkWin() {
+      if (slots.every(slot => slot.textContent)) {
+        clearInterval(tick);
+        statusEmoji.textContent = '✅';
+        statusEmoji.style.color = '#00ff00';
+      }
+    }
+
+    function lose() {
+      statusEmoji.textContent = '❌';
+      statusEmoji.style.color = '#ff3333';
+    }
+
+    function startTimer() {
+      tick = setInterval(() => {
+        time--;
+        timerEl.textContent = `⏳ ${time} сек`;
+        if (time <= 0) {
+          clearInterval(tick);
+          lose();
+        }
+      }, 1000);
+    }
+
+    function init() {
+      generateGrid();
+      revealed.fill(true);
+      renderGrid();
+
+      setTimeout(() => {
+        revealed.fill(false);
         renderGrid();
-      }
-    };
+        startTimer();
+      }, 5000); // Показ на 5 сек
+    }
 
-    const checkWin = () => {
-      if (foundPairs === 3) {
-        clearInterval(tick);
-        resultEl.textContent = "✅";
-        resultEl.style.color = "#00ff00";
-        sendResult("win");
-      }
-    };
-
-    const checkLoss = () => {
-      resultEl.textContent = "❌";
-      resultEl.style.color = "#ff3333";
-      sendResult("fail");
-    };
-
-    const sendResult = result => {
-      if (window.Telegram?.WebApp?.sendData) {
-        Telegram.WebApp.sendData(result);
-      } else {
-        fetch("https://api.telegram.org/bot7634182260:AAFaddkoCNkcZdVV5GPcszVKrUb0kLp97zE/sendMessage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 0,
-            text: result === "win" ? "Победа! ✔️" : "Ошибка ✖️"
-          })
-        });
-      }
-    };
-
-    values = generateValues();
-    renderGrid();
-
-    const tick = setInterval(() => {
-      timer--;
-      timerEl.textContent = timer;
-      if (timer <= 0) {
-        clearInterval(tick);
-        checkLoss();
-      }
-    }, 1000);
-  </script></body>
+    init();
+  </script>
+</body>
 </html>
