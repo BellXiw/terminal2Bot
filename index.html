@@ -2,7 +2,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Найди пары</title>
+  <title>🧠 Найди пары</title>
   <style>
     body {
       margin: 0;
@@ -14,55 +14,49 @@
       justify-content: center;
       height: 100vh;
     }
-    #welcome {
-      position: absolute;
-      font-size: 24px;
-      color: #00fff0;
-      text-shadow: 0 0 8px #00fff0;
-      animation: blink 1s linear infinite;
-      z-index: 5;
-    }
-    @keyframes blink { 50% { opacity: 0; } }
     .container {
-      border: 3px solid #00fff0;
-      border-radius: 20px;
-      padding: 15px;
-      box-shadow: 0 0 20px #00fff0;
+      border: 4px solid #00fff0;
+      border-radius: 30px;
+      padding: 20px;
+      box-shadow: 0 0 40px #00fff0;
       text-align: center;
+      width: 90%;
+      max-width: 420px;
       position: relative;
-      background: black;
     }
     h1 {
       margin-top: 0;
       font-size: 26px;
+      text-shadow: 0 0 10px #00fff0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(6, 40px);
-      grid-gap: 5px;
-      margin-bottom: 10px;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      margin-bottom: 16px;
     }
     .cell {
       width: 40px;
       height: 40px;
-      background: #000;
+      background: black;
       border: 2px solid #00fff0;
-      box-shadow: inset 0 0 8px #00fff0;
+      box-shadow: inset 0 0 10px #00fff0;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 18px;
-      color: #00fff0;
       cursor: pointer;
-      user-select: none;
+      color: #00fff0;
     }
-    .cell.empty {
+    .hidden {
       background: black;
-      border: 2px solid #003333;
       color: transparent;
-      box-shadow: none;
     }
-    .slots {
+    .slot-row {
       display: flex;
       justify-content: center;
       gap: 10px;
@@ -72,137 +66,147 @@
       width: 40px;
       height: 40px;
       border: 2px solid #00fff0;
-      box-shadow: inset 0 0 5px #00fff0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
+      box-shadow: inset 0 0 10px #00fff0;
     }
-    .timer {
-      font-size: 16px;
-      margin-bottom: 10px;
+    .timer, .result {
+      font-size: 18px;
+      margin-top: 10px;
     }
     .restart {
-      padding: 5px 10px;
-      font-size: 16px;
+      margin-top: 10px;
+      padding: 5px 15px;
       border: 2px solid #00fff0;
       background: black;
       color: #00fff0;
       cursor: pointer;
+      font-size: 18px;
     }
-    #status {
+    .emoji {
       position: absolute;
       bottom: 10px;
-      right: 15px;
-      font-size: 24px;
+      right: 20px;
+      font-size: 32px;
     }
   </style>
 </head>
 <body>
-  <div id="welcome">Загрузка терминала...</div>
-  <div id="app" style="display:none">
-    <div class="container">
-      <h1>🧠 Найди пары</h1>
-      <div class="grid" id="grid"></div>
-      <div class="slots">
-        <div class="slot" id="slot1"></div>
-        <div class="slot" id="slot2"></div>
-        <div class="slot" id="slot3"></div>
-      </div>
-      <div class="timer">⏳ <span id="time">30</span> сек</div>
-      <button class="restart" onclick="location.reload()">Рестарт</button>
-      <div id="status"></div>
+  <div class="container">
+    <h1>🧠 Найди пары</h1>
+    <div class="grid" id="grid"></div>
+    <div class="slot-row">
+      <div class="slot" id="slot1"></div>
+      <div class="slot" id="slot2"></div>
+      <div class="slot" id="slot3"></div>
     </div>
+    <div class="timer">⏳ <span id="timer">30</span> сек</div>
+    <button class="restart" onclick="location.reload()">Рестарт</button>
+    <div class="emoji" id="result"></div>
   </div>  <script>
-    setTimeout(() => {
-      document.getElementById('welcome').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-    }, 3000);
+    const gridEl = document.getElementById("grid");
+    const timerEl = document.getElementById("timer");
+    const resultEl = document.getElementById("result");
+    const slots = [
+      document.getElementById("slot1"),
+      document.getElementById("slot2"),
+      document.getElementById("slot3")
+    ];
 
-    const grid = document.getElementById('grid');
-    const slots = [document.getElementById('slot1'), document.getElementById('slot2'), document.getElementById('slot3')];
-    const timeEl = document.getElementById('time');
-    const status = document.getElementById('status');
+    const gridSize = 36;
+    let values = [];
+    let selected = [];
+    let foundPairs = 0;
+    let timer = 30;
 
-    const size = 36;
-    const cells = [];
-    const values = [];
-    const chosen = [];
-    const used = [];
-    let matched = 0;
-    let filledSlots = 0;
-    let time = 30;
-    let timer;
-
-    function init() {
+    // Генерация 3 пар + оставшиеся уникальные
+    const generateValues = () => {
       const nums = [];
-      const pairs = [];
-      while (pairs.length < 3) {
-        const n = Math.floor(Math.random() * 90 + 10);
-        if (!pairs.includes(n)) pairs.push(n);
+      const repeated = [];
+      while (repeated.length < 3) {
+        const num = Math.floor(Math.random() * 99) + 1;
+        if (!repeated.includes(num)) repeated.push(num);
       }
-      pairs.forEach(n => values.push(n, n));
-      while (values.length < size) {
-        const n = Math.floor(Math.random() * 90 + 10);
-        if (!values.includes(n)) values.push(n);
+      const repeats = repeated.flatMap(x => [x, x]);
+      while (repeats.length < 6) repeats.push(null);
+      while (repeats.length < gridSize) {
+        const num = Math.floor(Math.random() * 99) + 1;
+        if (!repeated.includes(num) && !repeats.includes(num)) repeats.push(num);
       }
-      values.sort(() => Math.random() - 0.5);
-      for (let i = 0; i < size; i++) {
-        const div = document.createElement('div');
-        div.className = 'cell';
-        div.dataset.index = i;
-        div.onclick = handleClick;
-        grid.appendChild(div);
-        cells.push(div);
-      }
-      timer = setInterval(() => {
-        time--;
-        timeEl.textContent = time;
-        if (time <= 0) endGame(false);
-      }, 1000);
-    }
+      return repeats.sort(() => Math.random() - 0.5);
+    };
 
-    function handleClick(e) {
-      const i = +e.target.dataset.index;
-      if (used.includes(i) || chosen.includes(i)) return;
-      e.target.textContent = values[i];
-      chosen.push(i);
-      if (chosen.length === 2) {
-        const [a, b] = chosen;
-        if (values[a] === values[b]) {
-          used.push(a, b);
-          cells[a].classList.add('empty');
-          cells[b].classList.add('empty');
-          cells[a].textContent = '';
-          cells[b].textContent = '';
-          slots[filledSlots++].textContent = values[a];
-          matched++;
-          if (matched === 3) endGame(true);
-        } else {
-          setTimeout(() => {
-            cells[a].textContent = '';
-            cells[b].textContent = '';
-          }, 500);
-        }
-        chosen.length = 0;
-      }
-    }
-
-    function endGame(win) {
-      clearInterval(timer);
-      document.querySelectorAll('.cell').forEach(cell => cell.onclick = null);
-      status.textContent = win ? '✔️' : '✖️';
-      status.style.color = win ? '#00ff00' : '#ff3333';
-      fetch(`https://api.telegram.org/bot7634182260:AAFaddkoCNkcZdVV5GPcszVKrUb0kLp97zE/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '',
-          text: win ? '✔️ Победа' : '✖️ Ошибка'
-        })
+    const renderGrid = () => {
+      gridEl.innerHTML = "";
+      values.forEach((val, idx) => {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.index = idx;
+        if (val !== null) cell.textContent = val;
+        else cell.textContent = "";
+        cell.addEventListener("click", () => handleClick(idx));
+        gridEl.appendChild(cell);
       });
-    }
+    };
 
-    init();
+    const handleClick = idx => {
+      const value = values[idx];
+      if (value === null || selected.includes(idx)) return;
+      selected.push(idx);
+
+      if (selected.length === 2) {
+        const [a, b] = selected;
+        if (values[a] === values[b]) {
+          const matchValue = values[a];
+          values[a] = values[b] = null;
+          const emptySlot = slots.find(slot => !slot.textContent);
+          if (emptySlot) emptySlot.textContent = matchValue;
+          foundPairs++;
+          checkWin();
+        }
+        selected = [];
+        renderGrid();
+      }
+    };
+
+    const checkWin = () => {
+      if (foundPairs === 3) {
+        clearInterval(tick);
+        resultEl.textContent = "✅";
+        resultEl.style.color = "#00ff00";
+        sendResult("win");
+      }
+    };
+
+    const checkLoss = () => {
+      resultEl.textContent = "❌";
+      resultEl.style.color = "#ff3333";
+      sendResult("fail");
+    };
+
+    const sendResult = result => {
+      if (window.Telegram?.WebApp?.sendData) {
+        Telegram.WebApp.sendData(result);
+      } else {
+        fetch("https://api.telegram.org/bot7634182260:AAFaddkoCNkcZdVV5GPcszVKrUb0kLp97zE/sendMessage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 0,
+            text: result === "win" ? "Победа! ✔️" : "Ошибка ✖️"
+          })
+        });
+      }
+    };
+
+    values = generateValues();
+    renderGrid();
+
+    const tick = setInterval(() => {
+      timer--;
+      timerEl.textContent = timer;
+      if (timer <= 0) {
+        clearInterval(tick);
+        checkLoss();
+      }
+    }, 1000);
   </script></body>
 </html>
