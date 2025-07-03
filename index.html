@@ -1,0 +1,170 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Найди пары</title>
+  <style>
+    body {
+      background-color: black;
+      color: cyan;
+      font-family: monospace;
+      text-align: center;
+      margin: 0;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 20px 0 10px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 50px);
+      grid-gap: 8px;
+      justify-content: center;
+      margin: 10px auto;
+    }
+    .cell, .slot {
+      width: 50px;
+      height: 50px;
+      border: 2px solid cyan;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.2rem;
+      cursor: pointer;
+      background-color: #000;
+      box-shadow: 0 0 8px cyan;
+    }
+    .hidden {
+      color: black;
+    }
+    .controls {
+      margin-top: 10px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 5px 15px;
+      background-color: transparent;
+      border: 2px solid cyan;
+      color: cyan;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .start {
+      margin-top: 20px;
+    }
+    #welcome {
+      color: cyan;
+      font-size: 1rem;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Найди пары</h1>
+  <div id="welcome">Добро пожаловать в испытание. Запомните числа — у вас есть 5 секунд.</div>
+  <div class="grid" id="grid"></div>
+  <div class="grid" id="slots"></div>
+  <div class="controls">
+    <div id="timer">⏳ 30 сек</div>
+    <button onclick="restartGame()">Рестарт</button>
+  </div>
+  <script>
+    const grid = document.getElementById("grid");
+    const slots = document.getElementById("slots");
+    const timerDisplay = document.getElementById("timer");
+    const welcomeText = document.getElementById("welcome");
+    let first = null, second = null, matched = 0, time = 30, gameStarted = false, timerInterval;
+    let numbers = [], selected = [], used = new Set();
+
+    function generateGrid() {
+      const baseNums = Array.from({length: 20}, (_, i) => i + 1);
+      const pairNums = [];
+      while (pairNums.length < 3) {
+        const rand = baseNums[Math.floor(Math.random() * baseNums.length)];
+        if (!pairNums.includes(rand)) pairNums.push(rand);
+      }
+      const rest = baseNums.filter(n => !pairNums.includes(n)).sort(() => Math.random() - 0.5).slice(0, 19 - 3);
+      const gridNums = [...pairNums, ...pairNums, ...rest].sort(() => Math.random() - 0.5);
+      numbers = gridNums;
+      grid.innerHTML = "";
+      for (let i = 0; i < 25; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.index = i;
+        cell.textContent = gridNums[i];
+        cell.onclick = () => handleSelect(cell);
+        grid.appendChild(cell);
+      }
+      slots.innerHTML = "";
+      for (let i = 0; i < 3; i++) {
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slots.appendChild(slot);
+      }
+      matched = 0;
+      selected = [];
+      used.clear();
+      welcomeText.style.display = "block";
+      clearInterval(timerInterval);
+      timerDisplay.textContent = "⏳ 30 сек";
+      setTimeout(() => {
+        welcomeText.style.display = "none";
+        gameStarted = true;
+        startTimer();
+      }, 5000);
+    }
+
+    function handleSelect(cell) {
+      if (!gameStarted || used.has(cell.dataset.index)) return;
+      if (selected.length < 2 && !selected.includes(cell)) {
+        cell.style.color = "cyan";
+        selected.push(cell);
+      }
+      if (selected.length === 2) {
+        const [a, b] = selected;
+        if (a.textContent === b.textContent) {
+          used.add(a.dataset.index);
+          used.add(b.dataset.index);
+          a.style.visibility = "hidden";
+          b.style.visibility = "hidden";
+          slots.children[matched].textContent = a.textContent;
+          matched++;
+          if (matched === 3) {
+            gameStarted = false;
+            clearInterval(timerInterval);
+            alert("✔️ Победа!");
+          }
+        } else {
+          setTimeout(() => {
+            a.style.color = "black";
+            b.style.color = "black";
+          }, 800);
+        }
+        selected = [];
+      }
+    }
+
+    function startTimer() {
+      time = 30;
+      timerInterval = setInterval(() => {
+        time--;
+        timerDisplay.textContent = `⏳ ${time} сек`;
+        if (time === 0) {
+          clearInterval(timerInterval);
+          gameStarted = false;
+          alert("✖️ Поражение!");
+        }
+      }, 1000);
+    }
+
+    function restartGame() {
+      gameStarted = false;
+      generateGrid();
+    }
+
+    generateGrid();
+  </script>
+</body>
+</html>
