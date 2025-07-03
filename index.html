@@ -21,6 +21,13 @@
       color: #0ff;
       text-shadow: 0 0 10px #0ff;
     }
+    #welcome {
+      color: #0ff;
+      font-size: 16px;
+      margin-bottom: 10px;
+      text-align: center;
+      text-shadow: 0 0 6px #0ff;
+    }
     #grid {
       display: grid;
       grid-template-columns: repeat(5, 60px);
@@ -77,6 +84,7 @@
   </style>
 </head>
 <body>
+  <div id="welcome">🧠 Добро пожаловать в терминал! Найди 3 пары одинаковых чисел на сетке 5x5. Удачи!</div>
   <h1>🧠 Найди пары</h1>
   <div id="grid"></div>
   <div id="slots"></div>
@@ -132,6 +140,7 @@
       for (let i = 0; i < 3; i++) {
         const slot = document.createElement("div");
         slot.className = "slot";
+        slot.textContent = "";
         slots.appendChild(slot);
       }
 
@@ -159,7 +168,15 @@
           first.element.classList.add("empty");
           e.target.textContent = "";
           first.element.textContent = "";
-          slots.children[found].textContent = value;
+
+          // Записываем число в первый пустой слот
+          for (let i = 0; i < slots.children.length; i++) {
+            if (slots.children[i].textContent === "") {
+              slots.children[i].textContent = value;
+              break;
+            }
+          }
+
           found++;
           if (found === 3) {
             clearInterval(timer);
