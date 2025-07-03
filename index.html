@@ -1,0 +1,89 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Number Match</title>
+  <style>
+    body { background: black; color: #00ffcc; font-family: monospace; text-align: center; padding: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(6, 40px); gap: 5px; justify-content: center; margin-top: 20px; }
+    .cell {
+      background: #001111; border: 1px solid #00ffcc; font-size: 18px;
+      width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .slot {
+      display: inline-block; width: 40px; height: 40px; border: 2px solid #00ffcc;
+      margin: 0 5px; line-height: 40px;
+    }
+    #status { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🧠 Найди пары</h1>
+  <div id="grid" class="grid"></div>
+  <div id="slots">
+    <div class="slot" id="slot1"></div>
+    <div class="slot" id="slot2"></div>
+    <div class="slot" id="slot3"></div>
+  </div>
+  <div id="status">⏳ <span id="timer">30</span> сек</div>
+  <script>
+    const gridEl = document.getElementById("grid");
+    const timerEl = document.getElementById("timer");
+    const slots = [document.getElementById("slot1"), document.getElementById("slot2"), document.getElementById("slot3")];
+    let numbers = [], selected = [], matchedPairs = 0, timer = 30, tick;
+
+    function generateGrid() {
+      const vals = [], options = [Math.floor(Math.random()*9), Math.floor(Math.random()*9), Math.floor(Math.random()*9)];
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) vals.push(options[i]);
+      while (vals.length < 36) vals.push('');
+      vals.sort(() => Math.random() - 0.5);
+      numbers = vals;
+      gridEl.innerHTML = "";
+      numbers.forEach((num, i) => {
+        const div = document.createElement("div");
+        div.className = "cell"; div.dataset.index = i; div.textContent = num;
+        div.addEventListener("click", () => selectCell(div, i));
+        gridEl.appendChild(div);
+      });
+    }
+
+    function selectCell(cell, i) {
+      if (!numbers[i]) return;
+      if (selected.length < 2 && !selected.includes(i)) {
+        cell.style.background = "#00ffcc";
+        selected.push(i);
+        if (selected.length === 2) setTimeout(checkMatch, 400);
+      }
+    }
+
+    function checkMatch() {
+      const [a, b] = selected;
+      if (numbers[a] === numbers[b]) {
+        slots[matchedPairs].textContent = numbers[a];
+        matchedPairs++;
+        if (matchedPairs === 3) return endGame("win");
+      }
+      document.querySelector(`[data-index='${a}']`).style.background = "#001111";
+      document.querySelector(`[data-index='${b}']`).style.background = "#001111";
+      selected = [];
+    }
+
+    function endGame(result) {
+      clearInterval(tick);
+      if (window.Telegram && Telegram.WebApp) Telegram.WebApp.sendData(result);
+    }
+
+    function startTimer() {
+      tick = setInterval(() => {
+        timer--;
+        timerEl.textContent = timer;
+        if (timer <= 0) endGame("fail");
+      }, 1000);
+    }
+
+    generateGrid(); startTimer();
+  </script>
+</body>
+</html>
